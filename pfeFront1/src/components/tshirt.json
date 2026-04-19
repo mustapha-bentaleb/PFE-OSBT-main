@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "mainColor": "red",
+    "secondColor": "white",
+    "collarColor": "yellow",
+    "insideColor": "red",
+    "pattern": "split",
+    "number": "19",
+    "name": "YAMAL",
+    "name_number_color": "blue",
+    "textFont": "Times New Roman",
+    "sponsor": "EMIRATE",
+    "sponsorColor": "white",
+    "sponsorFont": "Times New Roman",
+    "brand": "adidas",
+    "logo": "/logos/city.png",
+    "logoPosition": "center"
+  }
+]
