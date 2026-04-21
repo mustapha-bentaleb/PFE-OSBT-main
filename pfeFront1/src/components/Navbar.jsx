@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ProfileAvatar from './ProfileAvatar';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -62,6 +63,13 @@ const Navbar = () => {
 
           {user && (
             <div className="flex items-center space-x-4">
+              <ProfileAvatar
+                icon={user.profileAvatarIcon}
+                color={user.profileAvatarColor}
+                size={28}
+                initial={user.username}
+                className="bg-gray-700/80 p-1"
+              />
               <span className="text-gray-300 text-sm">
                 Welcome, <span className="font-semibold text-white">{user.username}</span>
               </span>

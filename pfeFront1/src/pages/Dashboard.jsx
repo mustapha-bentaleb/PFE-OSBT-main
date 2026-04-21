@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import CardTShirt from '../components/CardTShirt';
@@ -9,20 +9,30 @@ const Dashboard = () => {
   const [tshirts, setTshirts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchMyProfile = async () => {
-      try {
-        const response = await api.get("/tshirts/all");
-        setTshirts(response.data);
-      } catch (error) {
-        console.error('Error fetching profile tshirts:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMyProfile();
+  const fetchAllTShirts = useCallback(async () => {
+    try {
+      const response = await api.get('/tshirts/all');
+      setTshirts(response.data);
+    } catch (error) {
+      console.error('Error fetching t-shirts:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAllTShirts();
+  }, [fetchAllTShirts]);
+
+  const handleTshirtUpdate = useCallback((updated) => {
+    setTshirts((prev) =>
+      prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
+    );
+  }, []);
+
+  const myCount = user
+    ? tshirts.filter((t) => t.owner?.username === user.username).length
+    : 0;
 
   if (loading) {
     return (
@@ -35,7 +45,6 @@ const Dashboard = () => {
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
 
-      {/* HEADER PROFILE */}
       <div className="bg-white shadow rounded-lg p-6 flex justify-between items-center">
 
         <div>
@@ -61,12 +70,16 @@ const Dashboard = () => {
 
       </div>
 
-      {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         <div className="bg-white shadow rounded-lg p-4">
-          <p className="text-gray-500 text-sm">Total T-Shirts</p>
+          <p className="text-gray-500 text-sm">All T-Shirts</p>
           <p className="text-xl font-bold">{tshirts.length}</p>
+        </div>
+
+        <div className="bg-white shadow rounded-lg p-4">
+          <p className="text-gray-500 text-sm">My T-Shirts</p>
+          <p className="text-xl font-bold">{myCount}</p>
         </div>
 
         <div className="bg-white shadow rounded-lg p-4">
@@ -76,33 +89,30 @@ const Dashboard = () => {
           </p>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-4">
-          <p className="text-gray-500 text-sm">Status</p>
-          <p className="text-xl font-bold text-green-600">
-            Active
-          </p>
-        </div>
-
       </div>
 
-      {/* T-SHIRTS SECTION */}
       <div className="bg-white shadow rounded-lg p-6">
 
-        <h2 className="text-xl font-bold mb-4">
-          My T-Shirts
+        <h2 className="text-xl font-bold mb-1">
+          All T-Shirts
         </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Like any design — your likes are saved when you are logged in.
+        </p>
 
         {tshirts.length === 0 ? (
           <p className="text-gray-500">
-            You don't have any T-Shirts yet.
+            No T-Shirts yet.
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center md:justify-items-stretch">
 
             {tshirts.map((tshirt) => (
               <CardTShirt
                 key={tshirt.id}
                 tshirt={tshirt}
+                showLike
+                onTshirtUpdate={handleTshirtUpdate}
               />
             ))}
 

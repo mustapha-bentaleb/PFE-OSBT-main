@@ -15,6 +15,13 @@ public class TShirt {
     @JoinColumn(name = "user_id")
     private User owner;
 
+    @Column(nullable = false)
+    private int likesCount = 0;
+
+    /** Filled only in list APIs when the caller is authenticated; not persisted. */
+    @Transient
+    private boolean likedByCurrentUser;
+
     // 🎨 COLORS
     private String mainColor;
     private String secondColor;
@@ -46,12 +53,25 @@ public class TShirt {
     private String logo;
     private String logoPosition;
 
+    public TShirt() {}
+
+    public TShirt(String name, User owner) {
+        this.name = name;
+        this.owner = owner;
+    }
+
     // getters / setters
 
     public Long getId() { return id; }
 
     public User getOwner() { return owner; }
     public void setOwner(User owner) { this.owner = owner; }
+
+    public int getLikesCount() { return likesCount; }
+    public void setLikesCount(int likesCount) { this.likesCount = likesCount; }
+
+    public boolean isLikedByCurrentUser() { return likedByCurrentUser; }
+    public void setLikedByCurrentUser(boolean likedByCurrentUser) { this.likedByCurrentUser = likedByCurrentUser; }
 
     public String getMainColor() { return mainColor; }
     public void setMainColor(String mainColor) { this.mainColor = mainColor; }

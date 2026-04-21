@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import CardTShirt from '../components/CardTShirt';
+import ProfileAvatar from '../components/ProfileAvatar';
+import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
-
+  const { user } = useAuth();
   const [tshirts, setTshirts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +34,21 @@ const Profile = () => {
 
   return (
     <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      {user && (
+        <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200">
+          <ProfileAvatar
+            icon={user.profileAvatarIcon}
+            color={user.profileAvatarColor}
+            size={56}
+            initial={user.username}
+            className="bg-gray-100 p-2 ring-gray-200"
+          />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{user.username}</h1>
+            <p className="text-gray-500 text-sm">{user.email}</p>
+          </div>
+        </div>
+      )}
 
       <h2 className="text-2xl font-bold mb-6">
         My T-Shirts

@@ -40,13 +40,15 @@ public class AuthController {
         
         User registeredUser = userService.registerUser(user);
         String token = jwtUtil.generateToken(registeredUser.getUsername());
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("username", registeredUser.getUsername());
         response.put("email", registeredUser.getEmail());
         response.put("isAdmin", registeredUser.isAdmin());
-        
+        response.put("profileAvatarIcon", registeredUser.getProfileAvatarIcon());
+        response.put("profileAvatarColor", registeredUser.getProfileAvatarColor());
+
         return ResponseEntity.ok(response);
     }
     @PostMapping("/login")
@@ -63,6 +65,7 @@ public class AuthController {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             User user = userService.findByUsername(loginRequest.get("username")).orElseThrow();
+            user = userService.ensureProfileAvatarPersisted(user);
 
             String token = jwtUtil.generateToken(user.getUsername());
 
@@ -71,6 +74,8 @@ public class AuthController {
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
             response.put("isAdmin", user.isAdmin());
+            response.put("profileAvatarIcon", user.getProfileAvatarIcon());
+            response.put("profileAvatarColor", user.getProfileAvatarColor());
 
             return ResponseEntity.ok(response);
 
@@ -82,6 +87,4 @@ public class AuthController {
         }
     }
 
-
-    }
-
+}

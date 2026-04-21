@@ -10,7 +10,6 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.List;
 
 @Service
@@ -27,6 +26,42 @@ public class TShirtService {
 
     public List<TShirt> getAll() {
         return tShirtRepository.findAll();
+    }
+
+    public List<TShirt> findAllWithLikeState(String username) {
+        List<TShirt> list = tShirtRepository.findAll();
+        if (username == null || username.isBlank()) {
+            list.forEach(t -> t.setLikedByCurrentUser(false));
+            return list;
+        }
+        User viewer = userRepository.findByUsername(username).orElse(null);
+        if (viewer == null) {
+            list.forEach(t -> t.setLikedByCurrentUser(false));
+            return list;
+        }
+        attachLikeState(list, viewer.getId());
+        return list;
+    }
+
+    public List<TShirt> findMineWithLikeState(Long ownerId, String username) {
+        List<TShirt> list = tShirtRepository.findByOwner_Id(ownerId);
+        if (username == null || username.isBlank()) {
+            list.forEach(t -> t.setLikedByCurrentUser(false));
+            return list;
+        }
+        User viewer = userRepository.findByUsername(username).orElse(null);
+        if (viewer == null) {
+            list.forEach(t -> t.setLikedByCurrentUser(false));
+            return list;
+        }
+        attachLikeState(list, viewer.getId());
+        return list;
+    }
+
+    private void attachLikeState(List<TShirt> shirts, Long viewerUserId) {
+        for (TShirt t : shirts) {
+            t.setLikedByCurrentUser(likeRepository.existsByUserIdAndTshirtId(viewerUserId, t.getId()));
+        }
     }
 
     public TShirt create(String name, String ownerUsername) {

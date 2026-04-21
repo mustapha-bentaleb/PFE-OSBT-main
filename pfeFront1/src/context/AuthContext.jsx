@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -7,19 +8,26 @@ const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
+function readStoredUser() {
+  try {
+    const raw = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    if (!raw || !token) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => readStoredUser());
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-    }
-
+    const next = readStoredUser();
+    if (next) setUser(next);
+    else setUser(null);
     setLoading(false);
   }, []);
 
@@ -31,7 +39,9 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      flushSync(() => {
+        setUser(userData);
+      });
 
       toast.success('Login successful!');
 
@@ -58,7 +68,9 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(newUser));
-      setUser(newUser);
+      flushSync(() => {
+        setUser(newUser);
+      });
 
       toast.success('Registration successful!');
 
