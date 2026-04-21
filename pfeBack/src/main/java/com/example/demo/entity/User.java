@@ -3,6 +3,7 @@ package com.example.demo.entity;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -39,6 +40,10 @@ public class User {
     @Column(name = "profile_avatar_icon", length = 64)
     private String profileAvatarIcon;
 
+    /** Wallet balance (e.g. MAD) */
+    @Column(nullable = false, precision = 14, scale = 2)
+    private BigDecimal balance = new BigDecimal("50.00");
+
     // 👇 1 USER → MANY TSHIRTS
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
@@ -61,6 +66,9 @@ public class User {
 
     public String getProfileAvatarIcon() { return profileAvatarIcon; }
     public void setProfileAvatarIcon(String profileAvatarIcon) { this.profileAvatarIcon = profileAvatarIcon; }
+
+    public BigDecimal getBalance() { return balance; }
+    public void setBalance(BigDecimal balance) { this.balance = balance; }
 
     public boolean isAdmin() { return isAdmin; }
     public void setAdmin(boolean admin) { isAdmin = admin; }

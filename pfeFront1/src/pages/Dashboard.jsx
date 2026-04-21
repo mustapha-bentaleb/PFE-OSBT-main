@@ -111,6 +111,7 @@ const Dashboard = () => {
               <CardTShirt
                 key={tshirt.id}
                 tshirt={tshirt}
+                variant="dashboard"
                 showLike
                 onTshirtUpdate={handleTshirtUpdate}
               />

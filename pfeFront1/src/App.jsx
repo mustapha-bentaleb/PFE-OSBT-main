@@ -11,6 +11,8 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 import TshirtG from './pages/TshirtG';
+import Messages from './pages/Messages';
+import Offers from './pages/Offers';
 
 
 // 🔐 Private Route (user connecté فقط)
@@ -84,6 +86,24 @@ function AppContent() {
             element={
               <PrivateRoute>
                 <Profile />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/messages"
+            element={
+              <PrivateRoute>
+                <Messages />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/offers"
+            element={
+              <PrivateRoute>
+                <Offers />
               </PrivateRoute>
             }
           />

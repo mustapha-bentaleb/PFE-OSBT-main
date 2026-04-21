@@ -43,11 +43,13 @@ public class AuthController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
+        response.put("id", registeredUser.getId());
         response.put("username", registeredUser.getUsername());
         response.put("email", registeredUser.getEmail());
         response.put("isAdmin", registeredUser.isAdmin());
         response.put("profileAvatarIcon", registeredUser.getProfileAvatarIcon());
         response.put("profileAvatarColor", registeredUser.getProfileAvatarColor());
+        response.put("balance", registeredUser.getBalance());
 
         return ResponseEntity.ok(response);
     }
@@ -71,11 +73,13 @@ public class AuthController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
+            response.put("id", user.getId());
             response.put("username", user.getUsername());
             response.put("email", user.getEmail());
             response.put("isAdmin", user.isAdmin());
             response.put("profileAvatarIcon", user.getProfileAvatarIcon());
             response.put("profileAvatarColor", user.getProfileAvatarColor());
+            response.put("balance", user.getBalance());
 
             return ResponseEntity.ok(response);
 

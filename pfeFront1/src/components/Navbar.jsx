@@ -34,6 +34,18 @@ const Navbar = () => {
                 >
                   Profile
                 </Link>
+                <Link 
+                  to="/messages" 
+                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Messages
+                </Link>
+                <Link 
+                  to="/offers" 
+                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Offers
+                </Link>
                 {user.isAdmin && (
                   <Link 
                     to="/admin" 
@@ -63,6 +75,11 @@ const Navbar = () => {
 
           {user && (
             <div className="flex items-center space-x-4">
+              <span className="text-amber-300 text-sm font-medium tabular-nums" title="الرصيد">
+                {user.balance != null
+                  ? `${Number(user.balance).toFixed(2)} د.م.`
+                  : '—'}
+              </span>
               <ProfileAvatar
                 icon={user.profileAvatarIcon}
                 color={user.profileAvatarColor}

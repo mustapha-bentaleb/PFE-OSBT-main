@@ -29,7 +29,7 @@ public class TShirtService {
     }
 
     public List<TShirt> findAllWithLikeState(String username) {
-        List<TShirt> list = tShirtRepository.findAll();
+        List<TShirt> list = tShirtRepository.findAllWithOwner();
         if (username == null || username.isBlank()) {
             list.forEach(t -> t.setLikedByCurrentUser(false));
             return list;
@@ -44,7 +44,7 @@ public class TShirtService {
     }
 
     public List<TShirt> findMineWithLikeState(Long ownerId, String username) {
-        List<TShirt> list = tShirtRepository.findByOwner_Id(ownerId);
+        List<TShirt> list = tShirtRepository.findByOwnerIdWithOwner(ownerId);
         if (username == null || username.isBlank()) {
             list.forEach(t -> t.setLikedByCurrentUser(false));
             return list;
