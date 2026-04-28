@@ -29,6 +29,8 @@ export default function CardTShirt({
   const [offerPrice, setOfferPrice] = useState('');
   const [offerMessage, setOfferMessage] = useState('');
   const [offerBusy, setOfferBusy] = useState(false);
+  const [myTshirts, setMyTshirts] = useState([]);
+  const [barterIds, setBarterIds] = useState([]);
 
   const menuRef = useRef(null);
 
@@ -69,6 +71,27 @@ export default function CardTShirt({
     if (commentOpen) loadComments();
   }, [commentOpen, loadComments]);
 
+  useEffect(() => {
+    if (!offerOpen || !user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/tshirts/my');
+        if (!cancelled) {
+          setMyTshirts(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error('تعذر تحميل قمصانك لعرض المقايضة');
+          setMyTshirts([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [offerOpen, user]);
+
   const toggleLike = async () => {
     if (!showLike || busy || !dashboard) return;
     setBusy(true);
@@ -102,30 +125,56 @@ export default function CardTShirt({
     }
   };
 
+  const toggleBarter = (id) => {
+    setBarterIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
   const submitOffer = async (e) => {
     e.preventDefault();
+    let cash = null;
+    if (offerPrice.trim()) {
+      const n = parseFloat(offerPrice.replace(',', '.'));
+      if (Number.isNaN(n) || n < 0) {
+        toast.error('سعر غير صالح');
+        return;
+      }
+      if (n > 0) {
+        cash = n;
+      }
+    }
+    const hasCash = cash != null && cash > 0;
+    const hasBarter = barterIds.length > 0;
+    if (!hasCash && !hasBarter) {
+      toast.error('أضف مبلغاً أو اختر قميصاً للمقايضة (أو الاثنين)');
+      return;
+    }
+
+    const payload = {
+      message: offerMessage.trim() || undefined,
+    };
+    if (hasCash) {
+      payload.proposedPrice = cash;
+    }
+    if (hasBarter) {
+      payload.barterTshirtIds = barterIds;
+    }
+
     setOfferBusy(true);
     try {
-      const payload = {
-        message: offerMessage.trim() || undefined,
-      };
-      if (offerPrice.trim()) {
-        const n = parseFloat(offerPrice.replace(',', '.'));
-        if (Number.isNaN(n) || n < 0) {
-          toast.error('سعر غير صالح');
-          setOfferBusy(false);
-          return;
-        }
-        payload.proposedPrice = n;
-      }
-      await api.post(`/tshirts/${tshirt.id}/offers`, payload);
-      toast.success('تم إرسال عرض الشراء');
+      await toast.promise(api.post(`/tshirts/${tshirt.id}/offers`, payload), {
+        loading: 'جاري إرسال العرض…',
+        success: 'تم إرسال العرض — سيتم إشعار البائع',
+        error: (err) =>
+          typeof err.response?.data === 'string'
+            ? err.response.data
+            : 'تعذر إرسال العرض',
+      });
       setOfferOpen(false);
       setOfferPrice('');
       setOfferMessage('');
-    } catch (err) {
-      const m = err.response?.data;
-      toast.error(typeof m === 'string' ? m : 'تعذر إرسال العرض');
+      setBarterIds([]);
     } finally {
       setOfferBusy(false);
     }
@@ -307,18 +356,58 @@ export default function CardTShirt({
       {offerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl text-right">
-            <h3 className="font-semibold text-gray-900 mb-4">عرض شراء أولي</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">عرض شراء أو مقايضة</h3>
+            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+              يجب تحديد مبلغ على المحفظة، أو قميص واحد أو أكثر من ملكك للمقايضة، أو الجمع بينهما.
+            </p>
             <form onSubmit={submitOffer} className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-600 mb-1">السعر المقترح (اختياري)</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  المبلغ من المحفظة (اختياري)
+                </label>
                 <input
                   type="text"
                   inputMode="decimal"
                   className="w-full border rounded-lg px-3 py-2 text-sm"
                   value={offerPrice}
                   onChange={(e) => setOfferPrice(e.target.value)}
-                  placeholder="مثال: 99.50"
+                  placeholder="مثال: 99.50 د.م."
                 />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
+                  مقايضة بقمائصك (اختياري)
+                </label>
+                <div className="border rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100 bg-gray-50">
+                  {myTshirts.filter((t) => t.id !== tshirt.id).length === 0 ? (
+                    <p className="text-xs text-gray-500 p-3">لا توجد قمصان أخرى في حسابك للمقايضة.</p>
+                  ) : (
+                    myTshirts
+                      .filter((t) => t.id !== tshirt.id)
+                      .map((t) => (
+                        <label
+                          key={t.id}
+                          className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-white"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={barterIds.includes(t.id)}
+                            onChange={() => toggleBarter(t.id)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="truncate">
+                            #{t.id}
+                            {(t.name || t.number) && (
+                              <span className="text-gray-600">
+                                {' '}
+                                · {t.name || t.number}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      ))
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-xs text-gray-600 mb-1">رسالة (اختياري)</label>
@@ -333,7 +422,10 @@ export default function CardTShirt({
                 <button
                   type="button"
                   className="px-4 py-2 text-sm text-gray-600"
-                  onClick={() => setOfferOpen(false)}
+                  onClick={() => {
+                    setOfferOpen(false);
+                    setBarterIds([]);
+                  }}
                 >
                   إلغاء
                 </button>

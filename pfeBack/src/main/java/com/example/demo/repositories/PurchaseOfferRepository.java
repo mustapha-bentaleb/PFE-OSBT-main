@@ -7,8 +7,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PurchaseOfferRepository extends JpaRepository<PurchaseOffer, Long> {
+
+    /**
+     * Loads buyer, t-shirt and owner so REST JSON ({@code getTshirtId}, {@code getSellerUsername}) never hits lazy.
+     * Owner is LEFT-fetched so the row is still found if {@code user_id} is null (bad data).
+     */
+    @Query("SELECT DISTINCT o FROM PurchaseOffer o "
+            + "JOIN FETCH o.buyer JOIN FETCH o.tshirt t LEFT JOIN FETCH t.owner WHERE o.id = :id")
+    Optional<PurchaseOffer> findByIdWithAssociations(@Param("id") Long id);
 
     List<PurchaseOffer> findByTshirt_IdOrderByCreatedAtDesc(Long tshirtId);
 

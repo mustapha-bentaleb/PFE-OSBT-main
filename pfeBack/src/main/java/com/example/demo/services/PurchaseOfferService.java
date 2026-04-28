@@ -1,209 +1,317 @@
 package com.example.demo.services;
 
-import com.example.demo.entity.OfferStatus;
-import com.example.demo.entity.PurchaseOffer;
-import com.example.demo.entity.TShirt;
-import com.example.demo.entity.User;
+import com.example.demo.dto.PurchaseOfferJsonDto;
+import com.example.demo.entity.*;
 import com.example.demo.repositories.PurchaseOfferRepository;
 import com.example.demo.repositories.TShirtRepository;
 import com.example.demo.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PurchaseOfferService {
 
-    @Autowired
-    private PurchaseOfferRepository offerRepository;
+    private final PurchaseOfferRepository offerRepository;
+    private final TShirtRepository tShirtRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private TShirtRepository tShirtRepository;
+    public PurchaseOfferService(
+            PurchaseOfferRepository offerRepository,
+            TShirtRepository tShirtRepository,
+            UserRepository userRepository
+    ) {
+        this.offerRepository = offerRepository;
+        this.tShirtRepository = tShirtRepository;
+        this.userRepository = userRepository;
+    }
 
-    @Autowired
-    private UserRepository userRepository;
+    /* =========================
+       LISTING
+    ========================== */
 
     public List<PurchaseOffer> listIncomingForSeller(Long ownerId) {
-        return offerRepository.findIncomingForSeller(ownerId);
+        return enrich(offerRepository.findIncomingForSeller(ownerId));
     }
 
     public List<PurchaseOffer> listOutgoingForBuyer(Long buyerId) {
-        return offerRepository.findOutgoingForBuyer(buyerId);
+        return enrich(offerRepository.findOutgoingForBuyer(buyerId));
     }
 
-    public PurchaseOffer getOffer(Long id) {
-        return offerRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Offer not found"));
+    private List<PurchaseOffer> enrich(List<PurchaseOffer> offers) {
+        offers.forEach(this::enrichBarterSummaries);
+        return offers;
     }
+
+    /* =========================
+       CREATE OFFER
+    ========================== */
 
     @Transactional
-    public PurchaseOffer createOffer(Long tshirtId, String buyerUsername, BigDecimal proposedPrice, String message) {
+    public PurchaseOffer createOffer(
+            Long tshirtId,
+            String buyerUsername,
+            BigDecimal proposedPrice,
+            String message,
+            List<Long> barterTshirtIds
+    ) {
+
         TShirt tshirt = tShirtRepository.findById(tshirtId)
                 .orElseThrow(() -> new EntityNotFoundException("T-shirt not found"));
+
         User buyer = userRepository.findByUsername(buyerUsername)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-        User owner = tshirt.getOwner();
-        if (owner == null || owner.getId().equals(buyer.getId())) {
-            throw new IllegalArgumentException("Cannot make an offer on your own listing");
+        if (tshirt.getOwner() == null || tshirt.getOwner().getId().equals(buyer.getId())) {
+            throw new IllegalArgumentException("Invalid listing");
         }
+
+        List<Long> barter = normalize(barterTshirtIds);
+
+        boolean hasMoney = proposedPrice != null && proposedPrice.compareTo(BigDecimal.ZERO) > 0;
+        boolean hasBarter = !barter.isEmpty();
+
+        if (!hasMoney && !hasBarter) {
+            throw new IllegalArgumentException("Offer must include money or items");
+        }
+
+        validateBarterOwnership(barter, buyer.getId());
 
         PurchaseOffer offer = new PurchaseOffer();
         offer.setTshirt(tshirt);
         offer.setBuyer(buyer);
-        if (proposedPrice != null && proposedPrice.compareTo(BigDecimal.ZERO) > 0) {
-            offer.setProposedPrice(proposedPrice);
-        }
-        if (message != null && !message.isBlank()) {
-            String m = message.trim();
-            if (m.length() > 1000) {
-                throw new IllegalArgumentException("Message too long");
-            }
-            offer.setMessage(m);
-        }
+        offer.setProposedPrice(hasMoney ? proposedPrice : null);
+        offer.setBarterTshirtIds(barter);
+        offer.setMessage(message != null ? message.trim() : null);
         offer.setStatus(OfferStatus.PENDING);
+
         return offerRepository.save(offer);
     }
 
-    /** Seller accepts buyer’s initial price — money + shirt transfer */
+    /* =========================
+       SELLER ACTIONS
+    ========================== */
+
     @Transactional
-    public PurchaseOffer sellerAcceptInitial(Long offerId, String sellerUsername) {
+    public PurchaseOffer sellerAcceptInitial(Long offerId, String username) {
+
         PurchaseOffer offer = getOffer(offerId);
+
         assertStatus(offer, OfferStatus.PENDING);
-        User seller = resolveSeller(offer);
-        if (!seller.getUsername().equals(sellerUsername)) {
-            throw new SecurityException("Only the seller can accept here");
-        }
-        if (offer.getProposedPrice() == null || offer.getProposedPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("No price to accept — ask the buyer to set an offer price or send a counter-offer");
-        }
-        executeTrade(offer, offer.getProposedPrice());
-        closeCompetingOffers(offer);
-        return offerRepository.findById(offerId).orElseThrow();
+        assertSeller(offer, username);
+
+        BigDecimal cash = optionalMoney(offer.getProposedPrice());
+
+        completeTrade(offer, cash);
+
+        closeOthers(offer);
+
+        return offer;
     }
 
-    /** Seller rejects buyer’s initial offer */
     @Transactional
-    public PurchaseOffer sellerRejectInitial(Long offerId, String sellerUsername) {
+    public PurchaseOffer sellerRejectInitial(Long offerId, String username) {
         PurchaseOffer offer = getOffer(offerId);
+
         assertStatus(offer, OfferStatus.PENDING);
-        User seller = resolveSeller(offer);
-        if (!seller.getUsername().equals(sellerUsername)) {
-            throw new SecurityException("Only the seller can reject here");
-        }
+        assertSeller(offer, username);
+
         offer.setStatus(OfferStatus.REJECTED);
-        return offerRepository.save(offer);
-    }
 
-    /**
-     * Seller raises the price (counter-offer). Buyer must accept/reject this amount.
-     */
-    @Transactional
-    public PurchaseOffer sellerCounter(Long offerId, String sellerUsername, BigDecimal counterPrice) {
-        PurchaseOffer offer = getOffer(offerId);
-        assertStatus(offer, OfferStatus.PENDING);
-        User seller = resolveSeller(offer);
-        if (!seller.getUsername().equals(sellerUsername)) {
-            throw new SecurityException("Only the seller can counter");
-        }
-        if (counterPrice == null || counterPrice.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Counter price must be positive");
-        }
-        if (offer.getProposedPrice() != null && counterPrice.compareTo(offer.getProposedPrice()) < 0) {
-            throw new IllegalArgumentException("Counter price cannot be below the buyer’s offer");
-        }
-        offer.setSellerCounterPrice(counterPrice);
-        offer.setStatus(OfferStatus.SELLER_COUNTERED);
-        return offerRepository.save(offer);
-    }
-
-    /** Buyer accepts seller’s counter — pay sellerCounterPrice and receive shirt */
-    @Transactional
-    public PurchaseOffer buyerAcceptCounter(Long offerId, String buyerUsername) {
-        PurchaseOffer offer = getOffer(offerId);
-        assertStatus(offer, OfferStatus.SELLER_COUNTERED);
-        if (!offer.getBuyer().getUsername().equals(buyerUsername)) {
-            throw new SecurityException("Only the buyer can accept the counter");
-        }
-        if (offer.getSellerCounterPrice() == null || offer.getSellerCounterPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalStateException("Invalid counter price");
-        }
-        executeTrade(offer, offer.getSellerCounterPrice());
-        closeCompetingOffers(offer);
-        return offerRepository.findById(offerId).orElseThrow();
+        return offer;
     }
 
     @Transactional
-    public PurchaseOffer buyerRejectCounter(Long offerId, String buyerUsername) {
-        PurchaseOffer offer = getOffer(offerId);
-        assertStatus(offer, OfferStatus.SELLER_COUNTERED);
-        if (!offer.getBuyer().getUsername().equals(buyerUsername)) {
-            throw new SecurityException("Only the buyer can reject the counter");
-        }
-        offer.setStatus(OfferStatus.REJECTED);
-        return offerRepository.save(offer);
-    }
+    public PurchaseOffer sellerCounterPrice(Long offerId, String username, BigDecimal amount) {
 
-    @Transactional
-    public PurchaseOffer buyerWithdraw(Long offerId, String buyerUsername) {
-        PurchaseOffer offer = getOffer(offerId);
-        assertStatus(offer, OfferStatus.PENDING);
-        if (!offer.getBuyer().getUsername().equals(buyerUsername)) {
-            throw new SecurityException("Only the buyer can withdraw");
-        }
-        offer.setStatus(OfferStatus.WITHDRAWN);
-        return offerRepository.save(offer);
-    }
-
-    private static void assertStatus(PurchaseOffer offer, OfferStatus expected) {
-        if (offer.getStatus() != expected) {
-            throw new IllegalArgumentException("Invalid offer state: " + offer.getStatus());
-        }
-    }
-
-    private User resolveSeller(PurchaseOffer offer) {
-        TShirt t = offer.getTshirt();
-        User owner = t.getOwner();
-        if (owner == null) {
-            throw new IllegalStateException("T-shirt has no owner");
-        }
-        return owner;
-    }
-
-    private void executeTrade(PurchaseOffer offer, BigDecimal price) {
-        User buyer = userRepository.findById(offer.getBuyer().getId()).orElseThrow();
-        TShirt shirt = tShirtRepository.findById(offer.getTshirt().getId()).orElseThrow();
-        User seller = userRepository.findById(shirt.getOwner().getId()).orElseThrow();
-
-        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Invalid price");
         }
-        if (buyer.getBalance().compareTo(price) < 0) {
-            throw new IllegalArgumentException("Insufficient balance");
-        }
 
-        buyer.setBalance(buyer.getBalance().subtract(price));
-        seller.setBalance(seller.getBalance().add(price));
-        shirt.setOwner(buyer);
-        offer.setStatus(OfferStatus.ACCEPTED);
+        PurchaseOffer offer = getOffer(offerId);
 
-        userRepository.save(buyer);
-        userRepository.save(seller);
-        tShirtRepository.save(shirt);
-        offerRepository.save(offer);
+        assertStatus(offer, OfferStatus.PENDING);
+        assertSeller(offer, username);
+
+        offer.setSellerCounterPrice(amount);
+        offer.setStatus(OfferStatus.SELLER_COUNTERED);
+
+        return offer;
     }
 
-    private void closeCompetingOffers(PurchaseOffer accepted) {
-        Long tid = accepted.getTshirt().getId();
-        List<OfferStatus> active = Arrays.asList(OfferStatus.PENDING, OfferStatus.SELLER_COUNTERED);
-        List<PurchaseOffer> others = offerRepository.findByTshirt_IdAndIdNotAndStatusIn(tid, accepted.getId(), active);
-        for (PurchaseOffer o : others) {
-            o.setStatus(OfferStatus.REJECTED);
-            offerRepository.save(o);
+    /* =========================
+       BUYER ACTIONS
+    ========================== */
+
+    @Transactional
+    public PurchaseOffer buyerAcceptCounter(Long offerId, String username) {
+
+        PurchaseOffer offer = getOffer(offerId);
+
+        assertStatus(offer, OfferStatus.SELLER_COUNTERED);
+        assertBuyer(offer, username);
+
+        if (offer.getSellerCounterPrice() == null) {
+            throw new IllegalStateException("Missing counter price");
         }
+
+        completeTrade(offer, offer.getSellerCounterPrice());
+
+        closeOthers(offer);
+
+        return offer;
+    }
+
+    @Transactional
+    public PurchaseOffer buyerRejectCounter(Long offerId, String username) {
+
+        PurchaseOffer offer = getOffer(offerId);
+
+        assertStatus(offer, OfferStatus.SELLER_COUNTERED);
+        assertBuyer(offer, username);
+
+        offer.setStatus(OfferStatus.REJECTED);
+
+        return offer;
+    }
+
+    @Transactional
+    public PurchaseOffer buyerWithdraw(Long offerId, String username) {
+
+        PurchaseOffer offer = getOffer(offerId);
+
+        assertStatus(offer, OfferStatus.PENDING);
+        assertBuyer(offer, username);
+
+        offer.setStatus(OfferStatus.WITHDRAWN);
+
+        return offer;
+    }
+
+    /* =========================
+       CORE TRADE ENGINE
+    ========================== */
+
+    private void completeTrade(PurchaseOffer offer, BigDecimal cash) {
+
+        User buyer = offer.getBuyer();
+        TShirt tshirt = offer.getTshirt();
+        User seller = tshirt.getOwner();
+
+        List<TShirt> barterItems = loadBarterItems(offer.getBarterTshirtIds(), buyer.getId());
+
+        if (cash.compareTo(BigDecimal.ZERO) > 0) {
+            if (buyer.getBalance().compareTo(cash) < 0) {
+                throw new IllegalArgumentException("Insufficient balance");
+            }
+            buyer.setBalance(buyer.getBalance().subtract(cash));
+            seller.setBalance(seller.getBalance().add(cash));
+        }
+
+        // transfer barter items
+        for (TShirt t : barterItems) {
+            t.setOwner(seller);
+        }
+
+        // transfer main item
+        tshirt.setOwner(buyer);
+
+        offer.setStatus(OfferStatus.ACCEPTED);
+    }
+
+    /* =========================
+       HELPERS
+    ========================== */
+
+    private PurchaseOffer getOffer(Long id) {
+        return offerRepository.findByIdWithAssociations(id)
+                .orElseThrow(() -> new EntityNotFoundException("Offer not found"));
+    }
+
+    private void assertStatus(PurchaseOffer o, OfferStatus s) {
+        if (o.getStatus() != s) {
+            throw new IllegalStateException("Invalid state: " + o.getStatus());
+        }
+    }
+
+    private void assertSeller(PurchaseOffer o, String username) {
+        if (!o.getTshirt().getOwner().getUsername().equals(username)) {
+            throw new SecurityException("Not seller");
+        }
+    }
+
+    private void assertBuyer(PurchaseOffer o, String username) {
+        if (!o.getBuyer().getUsername().equals(username)) {
+            throw new SecurityException("Not buyer");
+        }
+    }
+
+    private BigDecimal optionalMoney(BigDecimal v) {
+        return v != null && v.compareTo(BigDecimal.ZERO) > 0 ? v : BigDecimal.ZERO;
+    }
+
+    private List<Long> normalize(List<Long> ids) {
+        if (ids == null) return List.of();
+        return ids.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private void validateBarterOwnership(List<Long> ids, Long buyerId) {
+        if (ids.isEmpty()) return;
+
+        List<TShirt> shirts = tShirtRepository.findAllById(ids);
+
+        for (TShirt t : shirts) {
+            if (t.getOwner() == null || !t.getOwner().getId().equals(buyerId)) {
+                throw new IllegalArgumentException("Invalid barter item");
+            }
+        }
+    }
+
+    private List<TShirt> loadBarterItems(List<Long> ids, Long buyerId) {
+        if (ids == null || ids.isEmpty()) return List.of();
+
+        List<TShirt> shirts = tShirtRepository.findAllById(ids);
+
+        for (TShirt t : shirts) {
+            if (!t.getOwner().getId().equals(buyerId)) {
+                throw new IllegalArgumentException("Barter item not owned anymore");
+            }
+        }
+
+        return shirts;
+    }
+
+    private void closeOthers(PurchaseOffer accepted) {
+        List<PurchaseOffer> others =
+                offerRepository.findByTshirt_IdAndIdNotAndStatusIn(
+                        accepted.getTshirt().getId(),
+                        accepted.getId(),
+                        List.of(OfferStatus.PENDING, OfferStatus.SELLER_COUNTERED)
+                );
+
+        others.forEach(o -> o.setStatus(OfferStatus.REJECTED));
+    }
+
+    private void enrichBarterSummaries(PurchaseOffer o) {
+        List<Long> ids = o.getBarterTshirtIds();
+        if (ids == null || ids.isEmpty()) {
+            o.setBarterTshirtSummaries(List.of());
+            return;
+        }
+
+        List<String> summaries = tShirtRepository.findAllById(ids)
+                .stream()
+                .map(t -> "#" + t.getId() + " · " +
+                        (t.getName() != null ? t.getName() : t.getNumber()))
+                .collect(Collectors.toList());
+
+        o.setBarterTshirtSummaries(summaries);
     }
 }

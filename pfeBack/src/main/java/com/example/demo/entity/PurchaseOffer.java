@@ -1,9 +1,12 @@
 package com.example.demo.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "purchase_offers")
@@ -31,6 +34,17 @@ public class PurchaseOffer {
 
     @Column(length = 1000)
     private String message;
+
+    /** T-shirt IDs the buyer offers in exchange (must be owned by buyer). */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "purchase_offer_barter_tshirts", joinColumns = @JoinColumn(name = "offer_id"))
+    @Column(name = "tshirt_id")
+    private List<Long> barterTshirtIds = new ArrayList<>();
+
+    /** Short labels for JSON (e.g. "#12 · Team A"); set when listing offers. */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<String> barterTshirtSummaries = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
@@ -86,6 +100,22 @@ public class PurchaseOffer {
 
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+
+    public List<Long> getBarterTshirtIds() {
+        return barterTshirtIds != null ? barterTshirtIds : List.of();
+    }
+
+    public void setBarterTshirtIds(List<Long> barterTshirtIds) {
+        this.barterTshirtIds = barterTshirtIds != null ? new ArrayList<>(barterTshirtIds) : new ArrayList<>();
+    }
+
+    public List<String> getBarterTshirtSummaries() {
+        return barterTshirtSummaries;
+    }
+
+    public void setBarterTshirtSummaries(List<String> barterTshirtSummaries) {
+        this.barterTshirtSummaries = barterTshirtSummaries != null ? barterTshirtSummaries : new ArrayList<>();
+    }
 
     public OfferStatus getStatus() { return status; }
     public void setStatus(OfferStatus status) { this.status = status; }

@@ -141,7 +141,29 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-center"
+          gutter={12}
+          containerStyle={{ direction: 'rtl' }}
+          toastOptions={{
+            duration: 3800,
+            style: {
+              background: '#1f2937',
+              color: '#f9fafb',
+              padding: '14px 18px',
+              fontSize: '0.925rem',
+              maxWidth: 'min(420px, 92vw)',
+            },
+            success: {
+              duration: 3500,
+              iconTheme: { primary: '#22c55e', secondary: '#fff' },
+            },
+            error: {
+              duration: 5000,
+              iconTheme: { primary: '#ef4444', secondary: '#fff' },
+            },
+          }}
+        />
         <AppContent />
       </AuthProvider>
     </Router>

@@ -1,6 +1,6 @@
 package com.example.demo.controllers;
 
-import com.example.demo.entity.PurchaseOffer;
+import com.example.demo.dto.PurchaseOfferJsonDto;
 import com.example.demo.entity.TshirtComment;
 import com.example.demo.services.PurchaseOfferService;
 import com.example.demo.services.TshirtCommentService;
@@ -12,12 +12,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tshirts")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:8081", "http://localhost:8082"})
 public class TshirtInteractionController {
 
     @Autowired
@@ -60,21 +61,36 @@ public class TshirtInteractionController {
         String username = requireUser(authentication);
         BigDecimal price = null;
         String message = null;
+        List<Long> barterIds = new ArrayList<>();
         if (body != null) {
             Object p = body.get("proposedPrice");
             if (p instanceof Number) {
                 price = BigDecimal.valueOf(((Number) p).doubleValue());
             } else if (p instanceof String && !((String) p).isBlank()) {
-                price = new BigDecimal(((String) p).trim());
+                price = new BigDecimal(((String) p).trim().replace(',', '.'));
             }
             Object m = body.get("message");
             if (m != null) {
                 message = m.toString();
             }
+            Object barter = body.get("barterTshirtIds");
+            if (barter instanceof List<?> list) {
+                for (Object item : list) {
+                    if (item instanceof Number) {
+                        barterIds.add(((Number) item).longValue());
+                    } else if (item != null) {
+                        try {
+                            barterIds.add(Long.parseLong(item.toString().trim()));
+                        } catch (NumberFormatException ignored) {
+                            /* skip invalid */
+                        }
+                    }
+                }
+            }
         }
         try {
-            PurchaseOffer offer = offerService.createOffer(id, username, price, message);
-            return ResponseEntity.ok(offer);
+            return ResponseEntity.ok(
+                    PurchaseOfferJsonDto.from(offerService.createOffer(id, username, price, message, barterIds)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (jakarta.persistence.EntityNotFoundException e) {

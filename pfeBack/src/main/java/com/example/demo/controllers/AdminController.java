@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:8081", "http://localhost:8082"})
 public class AdminController {
 
     @Autowired
@@ -24,7 +24,7 @@ public class AdminController {
     }
     
     @PutMapping("/users/{userId}/status")
-    @CrossOrigin(origins = "http://localhost:5173") // Ajouté spécifiquement
+    @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:8081", "http://localhost:8082"}) // Ajoute Expo web
     public ResponseEntity<?> changeStatus(@PathVariable Long userId) {
         try {
             User updatedUser = adminService.changeStatus(userId);

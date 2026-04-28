@@ -1,6 +1,7 @@
 package com.example.demo.controllers;
 
-import com.example.demo.entity.PurchaseOffer;
+import com.example.demo.dto.PurchaseOfferJsonDto;
+import com.example.demo.dto.SetCounterPriceBody;
 import com.example.demo.entity.User;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.PurchaseOfferService;
@@ -11,11 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/offers")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:8081", "http://localhost:8082"})
 public class OfferController {
 
     @Autowired
@@ -25,21 +25,27 @@ public class OfferController {
     private UserRepository userRepository;
 
     @GetMapping("/incoming")
-    public ResponseEntity<List<PurchaseOffer>> incoming(Authentication authentication) {
+    public ResponseEntity<List<PurchaseOfferJsonDto>> incoming(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).build();
         }
         User me = userRepository.findByUsername(authentication.getName()).orElseThrow();
-        return ResponseEntity.ok(offerService.listIncomingForSeller(me.getId()));
+        return ResponseEntity.ok(
+                offerService.listIncomingForSeller(me.getId()).stream()
+                        .map(PurchaseOfferJsonDto::from)
+                        .toList());
     }
 
     @GetMapping("/outgoing")
-    public ResponseEntity<List<PurchaseOffer>> outgoing(Authentication authentication) {
+    public ResponseEntity<List<PurchaseOfferJsonDto>> outgoing(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).build();
         }
         User me = userRepository.findByUsername(authentication.getName()).orElseThrow();
-        return ResponseEntity.ok(offerService.listOutgoingForBuyer(me.getId()));
+        return ResponseEntity.ok(
+                offerService.listOutgoingForBuyer(me.getId()).stream()
+                        .map(PurchaseOfferJsonDto::from)
+                        .toList());
     }
 
     @PostMapping("/{id}/seller-accept")
@@ -48,8 +54,8 @@ public class OfferController {
             return ResponseEntity.status(401).body("Login required");
         }
         try {
-            PurchaseOffer o = offerService.sellerAcceptInitial(id, authentication.getName());
-            return ResponseEntity.ok(o);
+            return ResponseEntity.ok(
+                    PurchaseOfferJsonDto.from(offerService.sellerAcceptInitial(id, authentication.getName())));
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -63,28 +69,32 @@ public class OfferController {
             return ResponseEntity.status(401).body("Login required");
         }
         try {
-            return ResponseEntity.ok(offerService.sellerRejectInitial(id, authentication.getName()));
+            return ResponseEntity.ok(
+                    PurchaseOfferJsonDto.from(offerService.sellerRejectInitial(id, authentication.getName())));
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @PostMapping("/{id}/seller-counter")
-    public ResponseEntity<?> sellerCounter(
+    /** البائع يفرض سعراً على المشتري (بعدها الحالة SELLER_COUNTERED). */
+    @PostMapping("/{id}/counter-price")
+    public ResponseEntity<?> counterPrice(
             @PathVariable Long id,
-            @RequestBody Map<String, Object> body,
+            @RequestBody(required = false) SetCounterPriceBody body,
             Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body("Login required");
         }
-        BigDecimal price = extractPrice(body != null ? body.get("counterPrice") : null);
+        BigDecimal amount = body != null ? body.getAmount() : null;
         try {
-            return ResponseEntity.ok(offerService.sellerCounter(id, authentication.getName(), price));
+            return ResponseEntity.ok(offerService.sellerCounterPrice(id, authentication.getName(), amount));
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(e.getMessage());
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -95,7 +105,8 @@ public class OfferController {
             return ResponseEntity.status(401).body("Login required");
         }
         try {
-            return ResponseEntity.ok(offerService.buyerAcceptCounter(id, authentication.getName()));
+            return ResponseEntity.ok(
+                    PurchaseOfferJsonDto.from(offerService.buyerAcceptCounter(id, authentication.getName())));
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -109,10 +120,13 @@ public class OfferController {
             return ResponseEntity.status(401).body("Login required");
         }
         try {
-            return ResponseEntity.ok(offerService.buyerRejectCounter(id, authentication.getName()));
+            return ResponseEntity.ok(
+                    PurchaseOfferJsonDto.from(offerService.buyerRejectCounter(id, authentication.getName())));
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -123,25 +137,15 @@ public class OfferController {
             return ResponseEntity.status(401).body("Login required");
         }
         try {
-            return ResponseEntity.ok(offerService.buyerWithdraw(id, authentication.getName()));
+            return ResponseEntity.ok(
+                    PurchaseOfferJsonDto.from(offerService.buyerWithdraw(id, authentication.getName())));
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-    }
-
-    private static BigDecimal extractPrice(Object p) {
-        if (p == null) {
-            return null;
-        }
-        if (p instanceof Number) {
-            return BigDecimal.valueOf(((Number) p).doubleValue());
-        }
-        if (p instanceof String s && !s.isBlank()) {
-            return new BigDecimal(s.trim().replace(',', '.'));
-        }
-        return null;
     }
 
 }

@@ -49,21 +49,41 @@ const Offers = () => {
     load();
   }, [load]);
 
-  const act = async (path, msgOk) => {
-    try {
-      await api.post(path);
-      toast.success(msgOk);
-      await load();
-    } catch (e) {
-      const err = e.response?.data;
-      toast.error(typeof err === 'string' ? err : 'فشلت العملية');
+  const parseApiError = (e) => {
+    if (!e.response) {
+      if (e.code === 'ERR_NETWORK' || e.message === 'Network Error') {
+        return 'تعذر الاتصال بالخادم. تأكد أن الخادم يعمل (مثلاً المنفذ 8080).';
+      }
+      return typeof e.message === 'string' ? e.message : null;
     }
+    const data = e.response.data;
+    if (typeof data === 'string') return data;
+    if (data && typeof data === 'object') {
+      if (typeof data.message === 'string') return data.message;
+      if (typeof data.error === 'string') return data.error;
+      if (typeof data.detail === 'string') return data.detail;
+    }
+    return null;
+  };
+
+  const act = async (path, { successMsg, loadingMsg = 'جاري التنفيذ…' }) => {
+    await toast.promise(
+      (async () => {
+        await api.post(path);
+        await load();
+      })(),
+      {
+        loading: loadingMsg,
+        success: successMsg,
+        error: (e) => parseApiError(e) || 'فشلت العملية',
+      }
+    );
   };
 
   const submitCounter = async (offerId) => {
     const raw = counterPrice[offerId];
     if (!raw || String(raw).trim() === '') {
-      toast.error('أدخل السعر');
+      toast.error('أدخل السعر المضاد');
       return;
     }
     const n = parseFloat(String(raw).replace(',', '.'));
@@ -71,15 +91,34 @@ const Offers = () => {
       toast.error('سعر غير صالح');
       return;
     }
-    try {
-      await api.post(`/offers/${offerId}/seller-counter`, { counterPrice: n });
-      toast.success('تم إرسال العرض للمشتري');
-      setCounterPrice((p) => ({ ...p, [offerId]: '' }));
-      await load();
-    } catch (e) {
-      const err = e.response?.data;
-      toast.error(typeof err === 'string' ? err : 'فشل الإرسال');
+    await toast.promise(
+      (async () => {
+        await api.post(
+          `/offers/${offerId}/counter-price`,
+          { amount: n },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+        setCounterPrice((p) => ({ ...p, [offerId]: '' }));
+        await load();
+      })(),
+      {
+        loading: 'جاري إرسال السعر للمشتري…',
+        success: 'تم إرسال السعر الأعلى للمشتري',
+        error: (e) => parseApiError(e) || 'فشل إرسال السعر المضاد',
+      }
+    );
+  };
+
+  const fmtBarter = (o) => {
+    const labels = o.barterTshirtSummaries;
+    if (Array.isArray(labels) && labels.length > 0) {
+      return labels.join('، ');
     }
+    const ids = o.barterTshirtIds;
+    if (Array.isArray(ids) && ids.length > 0) {
+      return ids.map((id) => `#${id}`).join('، ');
+    }
+    return null;
   };
 
   if (loading) {
@@ -98,7 +137,9 @@ const Offers = () => {
           <p className="text-gray-500 text-sm">لا توجد عروض واردة.</p>
         ) : (
           <ul className="space-y-3">
-            {incoming.map((o) => (
+            {incoming.map((o) => {
+              const barterLine = fmtBarter(o);
+              return (
               <li
                 key={o.id}
                 className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm"
@@ -113,11 +154,19 @@ const Offers = () => {
                   المشتري: <strong>{o.buyer?.username}</strong>
                 </p>
                 <p className="text-sm mt-1">
-                  عرض المشتري:{' '}
+                  المبلغ المقترح:{' '}
                   <strong>
-                    {o.proposedPrice != null ? `${o.proposedPrice} د.م.` : '—'}
+                    {o.proposedPrice != null && Number(o.proposedPrice) > 0
+                      ? `${o.proposedPrice} د.م.`
+                      : 'بدون مبلغ'}
                   </strong>
                 </p>
+                {barterLine && (
+                  <p className="text-sm text-emerald-800 mt-1">
+                    مقايضة (قمائص يعرضها المشتري):{' '}
+                    <strong>{barterLine}</strong>
+                  </p>
+                )}
                 {o.sellerCounterPrice != null && (
                   <p className="text-sm text-blue-700 mt-1">
                     سعرك المقترح للمشتري: <strong>{o.sellerCounterPrice} د.م.</strong>
@@ -130,7 +179,10 @@ const Offers = () => {
                       type="button"
                       className="bg-green-600 text-white px-3 py-1.5 rounded text-sm"
                       onClick={() =>
-                        act(`/offers/${o.id}/seller-accept`, 'تم قبول العرض وتحويل القميص')
+                        act(`/offers/${o.id}/seller-accept`, {
+                          successMsg: 'تم قبول العرض — اكتملت التحويلات (القميص والمقايضة إن وُجدت)',
+                          loadingMsg: 'جاري قبول العرض وإتمام البيع…',
+                        })
                       }
                     >
                       قبول عرض المشتري
@@ -139,7 +191,10 @@ const Offers = () => {
                       type="button"
                       className="bg-gray-200 px-3 py-1.5 rounded text-sm"
                       onClick={() =>
-                        act(`/offers/${o.id}/seller-reject`, 'تم الرفض')
+                        act(`/offers/${o.id}/seller-reject`, {
+                          successMsg: 'تم رفض العرض',
+                          loadingMsg: 'جاري رفض العرض…',
+                        })
                       }
                     >
                       رفض
@@ -165,7 +220,8 @@ const Offers = () => {
                   </div>
                 )}
               </li>
-            ))}
+            );
+            })}
           </ul>
         )}
       </section>
@@ -176,7 +232,9 @@ const Offers = () => {
           <p className="text-gray-500 text-sm">لا توجد عروض صادرة.</p>
         ) : (
           <ul className="space-y-3">
-            {outgoing.map((o) => (
+            {outgoing.map((o) => {
+              const barterLine = fmtBarter(o);
+              return (
               <li
                 key={o.id}
                 className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm"
@@ -191,14 +249,21 @@ const Offers = () => {
                   البائع: <strong>{o.sellerUsername || '—'}</strong>
                 </p>
                 <p className="text-sm mt-1">
-                  عرضك:{' '}
+                  مبلغك المقترح:{' '}
                   <strong>
-                    {o.proposedPrice != null ? `${o.proposedPrice} د.م.` : '—'}
+                    {o.proposedPrice != null && Number(o.proposedPrice) > 0
+                      ? `${o.proposedPrice} د.م.`
+                      : 'بدون مبلغ'}
                   </strong>
                 </p>
+                {barterLine && (
+                  <p className="text-sm text-emerald-800 mt-1">
+                    مقايضة معروضة: <strong>{barterLine}</strong>
+                  </p>
+                )}
                 {o.sellerCounterPrice != null && (
                   <p className="text-sm text-amber-700 mt-1">
-                    سعر البائع المقترح: <strong>{o.sellerCounterPrice} د.م.</strong>
+                    سعر البائع المضاد: <strong>{o.sellerCounterPrice} د.م.</strong>
                   </p>
                 )}
 
@@ -208,10 +273,10 @@ const Offers = () => {
                       type="button"
                       className="bg-green-600 text-white px-3 py-1.5 rounded text-sm"
                       onClick={() =>
-                        act(
-                          `/offers/${o.id}/buyer-accept-counter`,
-                          'تم الشراء وتحويل القميص لك'
-                        )
+                        act(`/offers/${o.id}/buyer-accept-counter`, {
+                          successMsg: 'تم قبول السعر المضاد — القميص والمقايضة بحوزتك الآن',
+                          loadingMsg: 'جاري الدفع وإتمام الصفقة…',
+                        })
                       }
                     >
                       قبول سعر البائع
@@ -220,7 +285,10 @@ const Offers = () => {
                       type="button"
                       className="bg-gray-200 px-3 py-1.5 rounded text-sm"
                       onClick={() =>
-                        act(`/offers/${o.id}/buyer-reject-counter`, 'تم الرفض')
+                        act(`/offers/${o.id}/buyer-reject-counter`, {
+                          successMsg: 'تم رفض السعر المضاد',
+                          loadingMsg: 'جاري الرفض…',
+                        })
                       }
                     >
                       رفض
@@ -232,13 +300,19 @@ const Offers = () => {
                   <button
                     type="button"
                     className="mt-2 text-sm text-red-600 underline"
-                    onClick={() => act(`/offers/${o.id}/withdraw`, 'تم سحب العرض')}
+                    onClick={() =>
+                      act(`/offers/${o.id}/withdraw`, {
+                        successMsg: 'تم سحب العرض',
+                        loadingMsg: 'جاري سحب العرض…',
+                      })
+                    }
                   >
                     سحب العرض
                   </button>
                 )}
               </li>
-            ))}
+            );
+            })}
           </ul>
         )}
       </section>
