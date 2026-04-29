@@ -3,14 +3,17 @@ package com.example.demo.controllers;
 import com.example.demo.entity.Conversation;
 import com.example.demo.entity.DirectMessage;
 import com.example.demo.entity.User;
+import com.example.demo.dto.DirectMessageDto;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.MessagingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -53,13 +56,13 @@ public class ConversationController {
     }
 
     @GetMapping("/{id}/messages")
-    public List<DirectMessage> messages(@PathVariable Long id, Authentication authentication) {
+    public List<DirectMessageDto> messages(@PathVariable Long id, Authentication authentication) {
         User me = requireUserEntity(authentication);
         return messagingService.listMessages(id, me.getId());
     }
 
     @PostMapping("/{id}/messages")
-    public ResponseEntity<DirectMessage> send(
+    public ResponseEntity<DirectMessageDto> send(
             @PathVariable Long id,
             @RequestBody Map<String, String> body,
             Authentication authentication) {
@@ -67,11 +70,29 @@ public class ConversationController {
         String text = body != null ? body.get("body") : null;
         try {
             DirectMessage m = messagingService.sendMessage(id, me.getId(), text);
-            return ResponseEntity.ok(m);
+            return ResponseEntity.ok(DirectMessageDto.from(m));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+    }
+
+    @PostMapping(value = "/{id}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> sendMultipart(
+            @PathVariable Long id,
+            @RequestPart(name = "body", required = false) String body,
+            @RequestPart(name = "type", required = false) String type,
+            @RequestPart(name = "file", required = false) MultipartFile file,
+            Authentication authentication) {
+        User me = requireUserEntity(authentication);
+        try {
+            DirectMessage m = messagingService.sendMessage(id, me.getId(), body, file, type);
+            return ResponseEntity.ok(DirectMessageDto.from(m));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
     }
 

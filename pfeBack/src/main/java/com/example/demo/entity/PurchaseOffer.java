@@ -47,7 +47,7 @@ public class PurchaseOffer {
     private List<String> barterTshirtSummaries = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 24)
+    @Column(nullable = false, length = 32)
     private OfferStatus status = OfferStatus.PENDING;
 
     @Column(nullable = false, updatable = false)

@@ -8,11 +8,24 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+
+
 public interface DirectMessageRepository extends JpaRepository<DirectMessage, Long> {
 
-    @Query("SELECT m FROM DirectMessage m JOIN FETCH m.sender WHERE m.conversation.id = :cid ORDER BY m.createdAt ASC")
-    List<DirectMessage> findByConversation_IdWithSender(@Param("cid") Long conversationId);
+    List<DirectMessage> findByConversation_IdOrderByCreatedAtAsc(Long conversationId);
 
-    @Query("SELECT m FROM DirectMessage m JOIN FETCH m.sender WHERE m.conversation.id = :cid ORDER BY m.createdAt DESC")
-    List<DirectMessage> findLastInConversation(@Param("cid") Long conversationId, Pageable pageable);
+    List<DirectMessage> findByConversation_IdOrderByCreatedAtDesc(Long conversationId, Pageable pageable);
+
+    @Query("SELECT m FROM DirectMessage m WHERE m.conversation.id = :conversationId ORDER BY m.createdAt DESC")
+    List<DirectMessage> findLastInConversation(@Param("conversationId") Long conversationId, Pageable pageable);
+
+    // Force-load sender to avoid LazyInitializationException during JSON serialization.
+    @Query("""
+            SELECT m
+            FROM DirectMessage m
+            JOIN FETCH m.sender s
+            WHERE m.conversation.id = :conversationId
+            ORDER BY m.createdAt ASC
+            """)
+    List<DirectMessage> findMessagesForConversationFetchSender(@Param("conversationId") Long conversationId);
 }
