@@ -1,7 +1,9 @@
 package com.example.demo.controllers;
 
+import com.example.demo.entity.PodOrder;
 import com.example.demo.entity.User;
 import com.example.demo.services.AdminService;
+import com.example.demo.services.PodOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,9 @@ public class AdminController {
 
     @Autowired
     private AdminService adminService;
+
+    @Autowired
+    private PodOrderService podOrderService;
 
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
@@ -36,6 +41,25 @@ public class AdminController {
             
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/pod-complaints")
+    public ResponseEntity<List<PodOrder>> listPodComplaints() {
+        return ResponseEntity.ok(podOrderService.listComplaintsForAdmin());
+    }
+
+    @PutMapping("/pod-orders/{orderId}/respond")
+    public ResponseEntity<?> respondToPodComplaint(
+            @PathVariable Long orderId,
+            @RequestBody Map<String, String> body) {
+        String text = body != null ? body.get("response") : null;
+        try {
+            return ResponseEntity.ok(podOrderService.adminRespond(orderId, text));
+        } catch (IllegalArgumentException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);

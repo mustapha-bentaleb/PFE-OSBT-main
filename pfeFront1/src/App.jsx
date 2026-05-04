@@ -13,6 +13,7 @@ import Admin from './pages/Admin';
 import TshirtG from './pages/TshirtG';
 import Messages from './pages/Messages';
 import Offers from './pages/Offers';
+import PrintOnDemand from './pages/PrintOnDemand';
 
 
 // 🔐 Private Route (user connecté فقط)
@@ -104,6 +105,15 @@ function AppContent() {
             element={
               <PrivateRoute>
                 <Offers />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/print-on-demand"
+            element={
+              <PrivateRoute>
+                <PrintOnDemand />
               </PrivateRoute>
             }
           />

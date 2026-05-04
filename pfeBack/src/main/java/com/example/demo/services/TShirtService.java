@@ -6,6 +6,8 @@ import com.example.demo.entity.User;
 import com.example.demo.repositories.LikeRepository;
 import com.example.demo.repositories.TShirtRepository;
 import com.example.demo.repositories.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,65 @@ public class TShirtService {
 
     @Autowired
     private UserRepository userRepository;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * يُنشئ قميصاً من لقطة JSON (نفس حقول الواجهة / tshirt.json بدون id/price/clubName).
+     */
+    @Transactional
+    public TShirt createFromDesignSnapshot(User owner, String designSnapshotJson) {
+        if (owner == null) {
+            throw new IllegalArgumentException("Owner required");
+        }
+        if (designSnapshotJson == null || designSnapshotJson.isBlank()) {
+            throw new IllegalArgumentException("Design snapshot required");
+        }
+        try {
+            JsonNode n = objectMapper.readTree(designSnapshotJson);
+            TShirt t = new TShirt();
+            t.setOwner(owner);
+            String label = text(n, "name");
+            if (label == null || label.isBlank()) {
+                label = text(n, "number");
+            }
+            if (label == null || label.isBlank()) {
+                label = "Print-on-demand";
+            }
+            t.setName(label.trim());
+
+            t.setMainColor(text(n, "mainColor"));
+            t.setSecondColor(text(n, "secondColor"));
+            t.setCollarColor(text(n, "collarColor"));
+            t.setInsideColor(text(n, "insideColor"));
+            t.setPattern(text(n, "pattern"));
+            t.setNumber(text(n, "number"));
+            t.setNameNumberColor(text(n, "name_number_color", "nameNumberColor"));
+            t.setTextFont(text(n, "textFont"));
+            t.setSponsorFont(text(n, "sponsorFont"));
+            t.setSponsor(text(n, "sponsor"));
+            t.setSponsorColor(text(n, "sponsorColor"));
+            t.setBrand(text(n, "brand"));
+            t.setLogo(text(n, "logo"));
+            t.setLogoPosition(text(n, "logoPosition"));
+
+            return tShirtRepository.save(t);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid design JSON: " + e.getMessage());
+        }
+    }
+
+    private static String text(JsonNode n, String... keys) {
+        for (String k : keys) {
+            if (n != null && n.has(k) && !n.get(k).isNull()) {
+                String s = n.get(k).asText();
+                if (s != null && !s.isBlank()) {
+                    return s;
+                }
+            }
+        }
+        return null;
+    }
 
     public List<TShirt> getAll() {
         return tShirtRepository.findAll();
