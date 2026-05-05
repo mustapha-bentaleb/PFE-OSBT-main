@@ -45,80 +45,82 @@ const Dashboard = () => {
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
 
-      <div className="bg-white shadow rounded-lg p-6 flex justify-between items-center">
+      <div className="card">
+        <div className="card-body flex flex-col md:flex-row md:justify-between md:items-center gap-4">
 
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {user?.username}
-          </h1>
+          <div>
+            <h1 className="text-2xl font-extrabold text-brand-ink">{user?.username}</h1>
 
-          <p className="text-sm text-gray-500">
-            {user?.email}
-          </p>
+            <p className="text-sm text-brand-muted">{user?.email}</p>
 
-          <p className="text-sm mt-1">
-            Role: {user?.isAdmin ? 'Admin' : 'User'}
-          </p>
+            <p className="text-sm mt-2 text-brand-ink/80">
+              Role: <span className="font-semibold">{user?.isAdmin ? 'Admin' : 'User'}</span>
+            </p>
+          </div>
+
+          <button onClick={logout} className="btn-ghost">
+            Sign out
+          </button>
+
         </div>
-
-        <button
-          onClick={logout}
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-        >
-          Logout
-        </button>
-
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-        <div className="bg-white shadow rounded-lg p-4">
-          <p className="text-gray-500 text-sm">All T-Shirts</p>
-          <p className="text-xl font-bold">{tshirts.length}</p>
+        <div className="card">
+          <div className="card-body">
+            <p className="text-brand-muted text-sm">All designs</p>
+            <p className="text-3xl font-extrabold text-brand-ink mt-2">{tshirts.length}</p>
+          </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-4">
-          <p className="text-gray-500 text-sm">My T-Shirts</p>
-          <p className="text-xl font-bold">{myCount}</p>
+        <div className="card">
+          <div className="card-body">
+            <p className="text-brand-muted text-sm">My designs</p>
+            <p className="text-3xl font-extrabold text-brand-ink mt-2">{myCount}</p>
+          </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-4">
-          <p className="text-gray-500 text-sm">Account Type</p>
-          <p className="text-xl font-bold">
-            {user?.isAdmin ? 'Administrator' : 'Standard User'}
-          </p>
+        <div className="card">
+          <div className="card-body">
+            <p className="text-brand-muted text-sm">Account</p>
+            <p className="text-lg font-bold text-brand-ink mt-2">
+              {user?.isAdmin ? 'Administrator' : 'Standard user'}
+            </p>
+            <p className="text-xs text-brand-muted mt-1">Permissions and access level</p>
+          </div>
         </div>
 
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="card">
 
-        <h2 className="text-xl font-bold mb-1">
-          All T-Shirts
-        </h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Like any design — your likes are saved when you are logged in.
-        </p>
-
-        {tshirts.length === 0 ? (
-          <p className="text-gray-500">
-            No T-Shirts yet.
+        <div className="card-header">
+          <h2 className="text-xl font-extrabold text-brand-ink">Marketplace</h2>
+          <p className="text-sm text-brand-muted mt-1">
+            Browse designs, preview details, and like your favorites for quick access.
           </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center md:justify-items-stretch">
+        </div>
 
-            {tshirts.map((tshirt) => (
-              <CardTShirt
-                key={tshirt.id}
-                tshirt={tshirt}
-                variant="dashboard"
-                showLike
-                onTshirtUpdate={handleTshirtUpdate}
-              />
-            ))}
+        <div className="card-body">
+          {tshirts.length === 0 ? (
+            <p className="text-brand-muted">No designs available yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center md:justify-items-stretch">
 
-          </div>
-        )}
+              {tshirts.map((tshirt) => (
+                <CardTShirt
+                  key={tshirt.id}
+                  tshirt={tshirt}
+                  variant="dashboard"
+                  showLike
+                  onTshirtUpdate={handleTshirtUpdate}
+                />
+              ))}
+
+            </div>
+          )}
+        </div>
 
       </div>
 

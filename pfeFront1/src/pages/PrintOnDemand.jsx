@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+
 import api from '../api/axios';
 import Model from '../components/Jersey';
 import catalogJson from '../components/tshirt.json';
 import { PATTERNS, FONTS, BRANDS } from '../components/patterns';
-import { POD_LOGO_FALLBACK_FILES, logoUrl } from '../constants/podLogos';
+import { POD_LOGO_DEFAULT_FILE, logoUrl } from '../constants/podLogos';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -44,7 +45,7 @@ const initialCustom = {
   sponsorColor: '#ffffff',
   sponsorFont: 'Arial',
   brand: 'adidas',
-  logo: logoUrl('city.png'),
+  logo: logoUrl(POD_LOGO_DEFAULT_FILE),
   logoPosition: 'center',
 };
 
@@ -89,8 +90,8 @@ export default function PrintOnDemand() {
   const [custom, setCustom] = useState(initialCustom);
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [logoFileNames, setLogoFileNames] = useState([]);
 
-  const [logoFileNames, setLogoFileNames] = useState(POD_LOGO_FALLBACK_FILES);
   const [cartOpen, setCartOpen] = useState(false);
   const [cart, setCart] = useState([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -108,11 +109,14 @@ export default function PrintOnDemand() {
         const res = await fetch('/logos/manifest.json');
         if (!res.ok) throw new Error('no manifest');
         const data = await res.json();
-        if (cancelled || !Array.isArray(data) || data.length === 0) return;
+        if (cancelled || !Array.isArray(data) || data.length === 0) {
+          if (!cancelled) setLogoFileNames([]);
+          return;
+        }
         const names = data.filter((x) => typeof x === 'string' && /\.(png|jpe?g|webp|svg)$/i.test(x));
-        if (names.length) setLogoFileNames(names);
+        if (!cancelled) setLogoFileNames(names);
       } catch {
-        if (!cancelled) setLogoFileNames(POD_LOGO_FALLBACK_FILES);
+        if (!cancelled) setLogoFileNames([]);
       }
     })();
     return () => {
@@ -400,10 +404,9 @@ export default function PrintOnDemand() {
             <label className="block space-y-1 text-sm">
               <span className="text-gray-600">لون الاسم والرقم</span>
               <input
-                type="text"
+                type="color"
                 className="w-full border rounded-lg px-3 py-2"
-                placeholder="white أو #hex"
-                value={custom.name_number_color}
+                value={custom.name_number_color.startsWith('#') ? custom.name_number_color : '#ffffff'}
                 onChange={(e) => setCustom((c) => ({ ...c, name_number_color: e.target.value }))}
               />
             </label>
@@ -435,8 +438,9 @@ export default function PrintOnDemand() {
               <label className="space-y-1 text-sm">
                 <span className="text-gray-600">لون الراعي</span>
                 <input
+                  type="color"
                   className="w-full border rounded-lg px-3 py-2"
-                  value={custom.sponsorColor}
+                  value={custom.sponsorColor.startsWith('#') ? custom.sponsorColor : '#ffffff'}
                   onChange={(e) => setCustom((c) => ({ ...c, sponsorColor: e.target.value }))}
                 />
               </label>
@@ -461,25 +465,31 @@ export default function PrintOnDemand() {
               <p className="text-xs font-semibold text-gray-700">الشعار</p>
               <label className="block space-y-1 text-sm">
                 <span className="text-gray-600">اختر صورة من مجلد public/logos</span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-1">
-                  {logoFileNames.map((file) => {
-                    const path = logoUrl(file);
-                    const selected = custom.logo === path;
-                    return (
-                      <button
-                        key={file}
-                        type="button"
-                        onClick={() => setCustom((c) => ({ ...c, logo: path }))}
-                        className={`rounded-lg border-2 p-1 flex flex-col items-center gap-1 transition-colors ${
-                          selected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <img src={path} alt="" className="h-10 w-10 object-contain mx-auto" />
-                        <span className="text-[10px] text-gray-500 truncate w-full text-center">{file}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {logoFileNames.length === 0 ? (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-md p-2">
+                    لا توجد صور في manifest.json حالياً.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-1">
+                    {logoFileNames.map((file) => {
+                      const path = logoUrl(file);
+                      const selected = custom.logo === path;
+                      return (
+                        <button
+                          key={file}
+                          type="button"
+                          onClick={() => setCustom((c) => ({ ...c, logo: path }))}
+                          className={`rounded-lg border-2 p-1 flex flex-col items-center gap-1 transition-colors ${
+                            selected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <img src={path} alt="" className="h-10 w-10 object-contain mx-auto" />
+                          <span className="text-[10px] text-gray-500 truncate w-full text-center">{file}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </label>
               <label className="block space-y-1 text-sm">
                 <span className="text-gray-600">موضع الشعار على القميص</span>

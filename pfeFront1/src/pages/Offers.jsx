@@ -52,7 +52,7 @@ const Offers = () => {
   const parseApiError = (e) => {
     if (!e.response) {
       if (e.code === 'ERR_NETWORK' || e.message === 'Network Error') {
-        return 'تعذر الاتصال بالخادم. تأكد أن الخادم يعمل (مثلاً المنفذ 8080).';
+        return 'تعذر الاتصال بالخادم. تأكد أن الخادم يعمل ثم أعد المحاولة.';
       }
       return typeof e.message === 'string' ? e.message : null;
     }
@@ -103,7 +103,7 @@ const Offers = () => {
       })(),
       {
         loading: 'جاري إرسال السعر للمشتري…',
-        success: 'تم إرسال السعر الأعلى للمشتري',
+        success: 'تم إرسال السعر للمشتري',
         error: (e) => parseApiError(e) || 'فشل إرسال السعر المضاد',
       }
     );
@@ -132,7 +132,7 @@ const Offers = () => {
       <h1 className="text-2xl font-bold text-gray-900">عروض الشراء</h1>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">واردة (أنا البائع)</h2>
+        <h2 className="text-lg font-semibold text-gray-800 mb-3">العروض الواردة (أنا البائع)</h2>
         {incoming.length === 0 ? (
           <p className="text-gray-500 text-sm">لا توجد عروض واردة.</p>
         ) : (
@@ -163,7 +163,7 @@ const Offers = () => {
                 </p>
                 {barterLine && (
                   <p className="text-sm text-emerald-800 mt-1">
-                    مقايضة (قمائص يعرضها المشتري):{' '}
+                    المقايضة (قمائص يعرضها المشتري):{' '}
                     <strong>{barterLine}</strong>
                   </p>
                 )}
@@ -180,8 +180,8 @@ const Offers = () => {
                       className="bg-green-600 text-white px-3 py-1.5 rounded text-sm"
                       onClick={() =>
                         act(`/offers/${o.id}/seller-accept`, {
-                          successMsg: 'تم قبول العرض — اكتملت التحويلات (القميص والمقايضة إن وُجدت)',
-                          loadingMsg: 'جاري قبول العرض وإتمام البيع…',
+                          successMsg: 'تم قبول العرض — اكتملت العملية',
+                          loadingMsg: 'جاري قبول العرض…',
                         })
                       }
                     >
@@ -227,7 +227,7 @@ const Offers = () => {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">صادرة (أنا المشتري)</h2>
+        <h2 className="text-lg font-semibold text-gray-800 mb-3">العروض الصادرة (أنا المشتري)</h2>
         {outgoing.length === 0 ? (
           <p className="text-gray-500 text-sm">لا توجد عروض صادرة.</p>
         ) : (
@@ -258,7 +258,7 @@ const Offers = () => {
                 </p>
                 {barterLine && (
                   <p className="text-sm text-emerald-800 mt-1">
-                    مقايضة معروضة: <strong>{barterLine}</strong>
+                    المقايضة المعروضة: <strong>{barterLine}</strong>
                   </p>
                 )}
                 {o.sellerCounterPrice != null && (
@@ -274,12 +274,12 @@ const Offers = () => {
                       className="bg-green-600 text-white px-3 py-1.5 rounded text-sm"
                       onClick={() =>
                         act(`/offers/${o.id}/buyer-accept-counter`, {
-                          successMsg: 'تم قبول السعر المضاد — القميص والمقايضة بحوزتك الآن',
-                          loadingMsg: 'جاري الدفع وإتمام الصفقة…',
+                          successMsg: 'تم قبول السعر المضاد — اكتملت العملية',
+                          loadingMsg: 'جاري إتمام الصفقة…',
                         })
                       }
                     >
-                      قبول سعر البائع
+                      قبول السعر
                     </button>
                     <button
                       type="button"

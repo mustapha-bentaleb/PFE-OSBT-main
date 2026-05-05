@@ -43,11 +43,11 @@ const PublicRoute = ({ children }) => {
 
 function AppContent() {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="app-shell">
 
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="app-container">
         <Routes>
 
           {/* 🏠 HOME (default page) */}
@@ -154,7 +154,7 @@ function App() {
         <Toaster
           position="top-center"
           gutter={12}
-          containerStyle={{ direction: 'rtl' }}
+          containerStyle={{ direction: 'ltr' }}
           toastOptions={{
             duration: 3800,
             style: {
@@ -163,6 +163,7 @@ function App() {
               padding: '14px 18px',
               fontSize: '0.925rem',
               maxWidth: 'min(420px, 92vw)',
+              borderRadius: '14px',
             },
             success: {
               duration: 3500,

@@ -51,10 +51,10 @@ const Admin = () => {
       setReplyFor(null);
       setReplyText('');
       await fetchPodComplaints();
-      alert('تم حفظ الرد');
+      alert('تم حفظ الرد بنجاح');
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.error || 'تعذر الحفظ');
+      alert(error.response?.data?.error || 'تعذر حفظ الرد');
     } finally {
       setReplyBusy(false);
     }
@@ -86,10 +86,10 @@ const Admin = () => {
       if (error.response?.status === 403) {
         alert("Vous n'avez pas les droits d'administration");
       } else if (error.response?.status === 401) {
-        alert("Session expirée, veuillez vous reconnecter");
+        alert('Session expirée, veuillez vous reconnecter');
         navigate('/login');
       } else {
-        alert("Erreur lors du changement de statut");
+        alert('Erreur lors du changement de statut');
       }
     } finally {
       setActionLoading(prev => ({ ...prev, [userId]: false }));

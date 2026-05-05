@@ -5,11 +5,11 @@ const Home = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
 
       <h1 className="text-4xl font-bold mb-6">
-        Welcome to Our App
+        Welcome to OSBT
       </h1>
 
       <p className="text-gray-600 mb-8">
-        Please login or create an account
+        Sign in to access your dashboard, manage your profile, and explore available offers.
       </p>
 
       <div className="flex gap-4">
@@ -18,14 +18,14 @@ const Home = () => {
           to="/login"
           className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
         >
-          Login
+          Sign in
         </Link>
 
         <Link
           to="/register"
           className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
         >
-          Register
+          Create account
         </Link>
 
       </div>

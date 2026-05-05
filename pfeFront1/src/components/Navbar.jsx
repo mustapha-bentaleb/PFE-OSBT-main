@@ -12,50 +12,59 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-gray-800 shadow-lg">
+    <nav className="sticky top-0 z-40 bg-white/70 backdrop-blur border-b border-brand-border" dir="ltr">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <Link to="/dashboard" className="text-white font-bold text-xl hover:text-gray-300 transition-colors">
-            Demo App
+          <Link to="/dashboard" className="flex items-center gap-3 group">
+            <div className="h-9 w-9 rounded-xl grid place-items-center text-white shadow-glow"
+                 style={{ background: 'linear-gradient(135deg, #e11d48 0%, #b45309 115%)' }}>
+              <span className="font-black">O</span>
+            </div>
+            <div className="leading-tight">
+              <div className="font-extrabold text-brand-ink group-hover:text-brand-red-800 transition-colors">
+                OSBT
+              </div>
+              <div className="text-xs text-brand-muted -mt-0.5">Red · Gold · White</div>
+            </div>
           </Link>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2">
             {user ? (
               <>
                 <Link 
                   to="/dashboard" 
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="px-3 py-2 rounded-xl text-sm font-semibold text-brand-ink/80 hover:text-brand-ink hover:bg-white transition"
                 >
                   Dashboard
                 </Link>
                 <Link 
                   to="/profile" 
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="px-3 py-2 rounded-xl text-sm font-semibold text-brand-ink/80 hover:text-brand-ink hover:bg-white transition"
                 >
                   Profile
                 </Link>
                 <Link 
                   to="/messages" 
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="px-3 py-2 rounded-xl text-sm font-semibold text-brand-ink/80 hover:text-brand-ink hover:bg-white transition"
                 >
                   Messages
                 </Link>
                 <Link 
                   to="/offers" 
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="px-3 py-2 rounded-xl text-sm font-semibold text-brand-ink/80 hover:text-brand-ink hover:bg-white transition"
                 >
                   Offers
                 </Link>
                 <Link 
                   to="/print-on-demand" 
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="px-3 py-2 rounded-xl text-sm font-semibold text-brand-ink/80 hover:text-brand-ink hover:bg-white transition"
                 >
-                  طباعة عند الطلب
+                  Print on Demand
                 </Link>
                 {user.isAdmin && (
                   <Link 
                     to="/admin" 
-                    className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    className="px-3 py-2 rounded-xl text-sm font-semibold text-brand-red-800 hover:text-brand-red-900 hover:bg-brand-red-50 transition"
                   >
                     Admin
                   </Link>
@@ -65,23 +74,23 @@ const Navbar = () => {
               <>
                 <Link 
                   to="/login" 
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="btn-ghost"
                 >
-                  Login
+                  Sign in
                 </Link>
                 <Link 
                   to="/register" 
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="btn-primary"
                 >
-                  Register
+                  Create account
                 </Link>
               </>
             )}
           </div>
 
           {user && (
-            <div className="flex items-center space-x-4">
-              <span className="text-amber-300 text-sm font-medium tabular-nums" title="الرصيد">
+            <div className="hidden md:flex items-center gap-3">
+              <span className="badge-gold tabular-nums" title="الرصيد">
                 {user.balance != null
                   ? `${Number(user.balance).toFixed(2)} د.م.`
                   : '—'}
@@ -91,16 +100,16 @@ const Navbar = () => {
                 color={user.profileAvatarColor}
                 size={28}
                 initial={user.username}
-                className="bg-gray-700/80 p-1"
+                className="bg-white p-1 border border-brand-border"
               />
-              <span className="text-gray-300 text-sm">
-                Welcome, <span className="font-semibold text-white">{user.username}</span>
+              <span className="text-sm text-brand-muted">
+                Welcome, <span className="font-semibold text-brand-ink">{user.username}</span>
               </span>
               <button
                 onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                className="btn-ghost"
               >
-                Logout
+                Sign out
               </button>
             </div>
           )}

@@ -1,8 +1,7 @@
 /**
- * قائمة احتياطية إذا تعذر تحميل public/logos/manifest.json
- * أضف أي ملف جديد تحت public/logos/ ثم حدّث manifest.json
+ * القيمة الافتراضية لملف الشعار قبل أي تغيير من واجهة الإدخال.
  */
-export const POD_LOGO_FALLBACK_FILES = ['city.svg'];
+export const POD_LOGO_DEFAULT_FILE = 'city.png';
 
 /** مسار الشعار للعرض والتصميم */
 export function logoUrl(fileName) {

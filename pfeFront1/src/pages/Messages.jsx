@@ -60,7 +60,7 @@ const Messages = () => {
       const { data } = await api.get('/conversations');
       setConversations(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Erreur conversations');
+      toast.error('تعذر تحميل المحادثات');
     } finally {
       setLoadingList(false);
     }
@@ -74,7 +74,7 @@ const Messages = () => {
       setMessages(msgs);
       lastMessagesRef.current = msgs;
     } catch {
-      toast.error('Erreur messages');
+      toast.error('تعذر تحميل الرسائل');
     } finally {
       setLoadingMsg(false);
     }
@@ -143,7 +143,7 @@ const Messages = () => {
       setBody('');
       setEmojiOpen(false);
     } catch {
-      toast.error('Upload failed');
+      toast.error('فشل رفع الملف');
     } finally {
       setUploading(false);
       setRecording(false);
@@ -183,7 +183,7 @@ const Messages = () => {
       mr.start();
       setRecording(true);
     } catch {
-      toast.error('Mic error');
+      toast.error('تعذر الوصول إلى الميكروفون');
     }
   };
 
@@ -206,7 +206,7 @@ const Messages = () => {
       setBody('');
       setEmojiOpen(false);
     } catch {
-      toast.error('Send failed');
+      toast.error('فشل إرسال الرسالة');
     }
   };
 
@@ -217,11 +217,11 @@ const Messages = () => {
 
       {/* LEFT */}
       <aside className="w-80 border-r flex flex-col">
-        <div className="p-4 font-semibold">Messages</div>
+        <div className="p-4 font-semibold">الرسائل</div>
 
         <div className="flex-1 overflow-y-auto">
           {loadingList ? (
-            <p className="p-4">Loading...</p>
+            <p className="p-4">جاري التحميل…</p>
           ) : (
             conversations.map(c => (
               <button
@@ -250,7 +250,7 @@ const Messages = () => {
 
         {!activeId ? (
           <div className="flex-1 flex items-center justify-center text-gray-500">
-            Select conversation
+            اختر محادثة للبدء
           </div>
         ) : (
           <>
@@ -267,7 +267,7 @@ const Messages = () => {
 
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50 space-y-2">
               {loadingMsg ? (
-                <p>Loading...</p>
+                <p>جاري التحميل…</p>
               ) : (
                 messages.map(m => {
                   const mine = m.sender?.username === user?.username;
@@ -320,9 +320,10 @@ const Messages = () => {
                   className="flex-1 border px-3 py-2 rounded"
                   value={body}
                   onChange={e => setBody(e.target.value)}
+                  placeholder="اكتب رسالة…"
                 />
 
-                <button type="submit">Send</button>
+                <button type="submit">إرسال</button>
               </div>
 
             </form>

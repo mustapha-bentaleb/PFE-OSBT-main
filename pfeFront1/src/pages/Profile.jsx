@@ -64,9 +64,9 @@ const Profile = () => {
         profileAvatarIcon: data.profileAvatarIcon,
         profileAvatarColor: data.profileAvatarColor,
       });
-      toast.success('تم حفظ الصورة الرمزية');
+      toast.success('تم حفظ الصورة الرمزية بنجاح');
     } catch {
-      toast.error('تعذر الحفظ');
+      toast.error('تعذر حفظ الصورة الرمزية');
     } finally {
       setSaving(false);
     }
@@ -82,10 +82,10 @@ const Profile = () => {
         updateUser({ balance: data.balance });
       }
       setRedeemCode('');
-      toast.success(data?.message || 'تم الشحن');
+      toast.success(data?.message || 'تم شحن الرصيد بنجاح');
     } catch (err) {
       const m = err.response?.data;
-      toast.error(typeof m === 'string' ? m : 'كود غير صالح أو مستخدم');
+      toast.error(typeof m === 'string' ? m : 'الكود غير صالح أو تم استخدامه من قبل');
     } finally {
       setRedeeming(false);
     }
@@ -94,7 +94,7 @@ const Profile = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-xl">Loading...</div>
+        <div className="text-xl">جاري التحميل…</div>
       </div>
     );
   }
@@ -148,7 +148,7 @@ const Profile = () => {
                 disabled={redeeming || redeemCode.length !== 4}
                 className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
               >
-                {redeeming ? '…' : 'شحن'}
+                {redeeming ? '…' : 'شحن الرصيد'}
               </button>
             </div>
           </form>
@@ -157,7 +157,7 @@ const Profile = () => {
             onSubmit={saveAvatar}
             className="flex-1 max-w-xl bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-4"
           >
-            <h2 className="font-semibold text-gray-900">تخصيص الأفاتار</h2>
+            <h2 className="font-semibold text-gray-900">تخصيص الصورة الرمزية</h2>
             <div>
               <label className="block text-sm text-gray-600 mb-1">شكل الأيقونة</label>
               <select
@@ -183,7 +183,7 @@ const Profile = () => {
                 />
               </div>
               <div className="flex-1 min-w-[120px]">
-                <label className="block text-sm text-gray-600 mb-1">رمز اللون (hex)</label>
+                <label className="block text-sm text-gray-600 mb-1">رمز اللون (Hex)</label>
                 <input
                   type="text"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
@@ -199,7 +199,7 @@ const Profile = () => {
               disabled={saving}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
-              {saving ? 'جاري الحفظ…' : 'حفظ الأفاتار'}
+              {saving ? 'جاري الحفظ…' : 'حفظ التغييرات'}
             </button>
           </form>
         </div>
@@ -211,7 +211,7 @@ const Profile = () => {
 
       {tshirts.length === 0 ? (
         <p className="text-gray-500">
-          لا توجد قمصان بعد.
+          لا توجد قمصان في حسابك بعد.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
